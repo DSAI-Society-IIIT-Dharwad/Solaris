@@ -32,7 +32,7 @@ def create_kill_chain_tree(worst_path, graph_ref):
     
     return tree # Return the full tree
 
-def display_rich_dashboard(worst_path, blast, cycles, critical_res, graph_ref):
+def display_rich_dashboard(worst_path, blast, cycles, critical_res, graph_ref, new_paths=None, is_first_run=False):
     """Main function to render the high-fidelity results layout."""
     layout = Layout()
 
@@ -82,9 +82,19 @@ def display_rich_dashboard(worst_path, blast, cycles, critical_res, graph_ref):
     rec_text = critical_res.get('recommendation', critical_res.get('message', "No critical action required."))
     remediation_panel = Panel(Text(rec_text, style="italic yellow"), title="[bold green]Remediation Strategy[/bold green]", border_style="green")
 
+    # ----- TEMPORAL ALERT PANEL -----
+    if is_first_run:
+        temporal_panel = Panel(Text("Baseline state recorded. Monitoring...", justify="center", style="dim white"), title="Temporal Analysis", border_style="white")
+    elif new_paths and len(new_paths) > 0:
+        temporal_panel = Panel(Text(f"🚨 {len(new_paths)} NEW PATH(S) DETECTED!", justify="center", style="bold red"), title="[bold red]Temporal Alert[/bold red]", border_style="red")
+    else:
+        temporal_panel = Panel(Text("✅ No new paths. State is stable.", justify="center", style="bold green"), title="Temporal Analysis", border_style="green")
+
+    # Pack the right layout
     layout["right"].split_column(
-        Layout(Panel(stats_table, title="[bold cyan]Analytics Summary[/bold cyan]", border_style="cyan"), ratio=1),
-        Layout(remediation_panel, ratio=1)
+        Layout(Panel(stats_table, title="[bold cyan]Analytics Summary[/bold cyan]", border_style="cyan"), ratio=3),
+        Layout(temporal_panel, size=5), # Fixed size for the alert
+        Layout(remediation_panel, ratio=2)
     )
 
     console.print(layout)

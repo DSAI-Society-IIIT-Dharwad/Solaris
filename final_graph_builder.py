@@ -3,6 +3,7 @@ import networkx as nx
 import argparse
 from datetime import datetime
 from pdf_reporter import export_full_pdf_report
+import os
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -25,12 +26,13 @@ def fmt_node(node_id, G):
 def fmt_cve(node_id, G):
     """Return '  [CVE: X, CVSS Y]' if node has recorded vulnerabilities."""
     data = G.nodes.get(node_id, {})
-    # vulnerabilities may be stored inside meta or at top level
-    vulns = data.get("meta", {}).get("vulnerabilities") or data.get("vulnerabilities", [])
-    if not vulns:
-        return ""
-    top = max(vulns, key=lambda v: v.get("cvss", 0))
-    return f"  [CVE: {top['cve']}, CVSS {top['cvss']}]"
+    # cves is a list of CVE-id strings; use node risk_score as the score
+    cves = data.get("cves", [])
+    if cves:
+        cve_id = cves[0]
+        score  = data.get("risk_score", 0)
+        return f"  [CVE: {cve_id}, CVSS {score}]"
+    return ""
 
 
 def severity_label(score):
@@ -71,6 +73,9 @@ class AttackPathGraph:
                 nid = nc.pop("id")
                 self.G.add_node(nid, **nc)
             for edge in data.get("edges", []):
+                # Skip edges that don't have source and target (e.g., comment objects)
+                if "source" not in edge or "target" not in edge:
+                    continue
                 ec = dict(edge)
                 src = ec.pop("source")
                 tgt = ec.pop("target")
@@ -83,11 +88,11 @@ class AttackPathGraph:
 
     def get_entry_points(self):
         return [n for n, a in self.G.nodes(data=True)
-                if a.get("meta", {}).get("entry_point") is True]
+                if a.get("is_source") is True]
 
     def get_crown_jewels(self):
         return [n for n, a in self.G.nodes(data=True)
-                if a.get("meta", {}).get("crown_jewel") is True]
+                if a.get("is_sink") is True]
 
     # ── Algorithm 1: BFS Blast Radius ──────────────────────────────
     def get_blast_radius(self, source_node, max_hops=3):
@@ -117,7 +122,7 @@ class AttackPathGraph:
                 self.G, source=source_node, target=target_node, weight="weight"
             )
             risk = sum(
-                self.G[u][v].get("risk_score", 0)
+                self.G[u][v].get("cvss") or self.G[u][v].get("risk_score", 0)
                 for u, v in zip(path[:-1], path[1:])
             )
             return {"path": path, "total_hops": len(path) - 1,
@@ -135,14 +140,20 @@ class AttackPathGraph:
             return {"message": "No sources or crown jewels.", "recommendation": "Cluster appears secure.", "top5": []}
 
         def _all_paths(G):
+            # Use Dijkstra (one path per pair) to stay consistent with
+            # find_all_attack_paths — ensures baseline count matches display
             paths = set()
+            seen = set()
             for src in sources:
                 for tgt in crown_jewels:
+                    if (src, tgt) in seen:
+                        continue
+                    seen.add((src, tgt))
                     if src not in G or tgt not in G:
                         continue
                     try:
-                        for p in nx.all_simple_paths(G, source=src, target=tgt, cutoff=cutoff):
-                            paths.add(tuple(p))
+                        p = nx.dijkstra_path(G, source=src, target=tgt, weight="weight")
+                        paths.add(tuple(p))
                     except (nx.NetworkXNoPath, nx.NodeNotFound):
                         pass
             return paths
@@ -210,26 +221,73 @@ class AttackPathGraph:
 # ══════════════════════════════════════════════════════════════════
 
 def find_all_attack_paths(graph, sources, crown_jewels, cutoff=8):
+    """
+    Returns ONE shortest (Dijkstra) path per unique (source, sink) pair.
+    Using all_simple_paths explodes to hundreds of paths because noise edges
+    create alternative routes through the graph. Dijkstra gives exactly one
+    canonical path per pair — the easiest/most dangerous route an attacker
+    would actually take.
+    """
     all_paths = []
+    seen_pairs = set()
     for src in sources:
         for tgt in crown_jewels:
+            pair = (src, tgt)
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
             try:
-                for p in nx.all_simple_paths(graph.G, source=src, target=tgt, cutoff=cutoff):
-                    risk = sum(
-                        graph.G[u][v].get("risk_score", 0)
-                        for u, v in zip(p[:-1], p[1:])
-                    )
-                    all_paths.append({
-                        "source": src,
-                        "target": tgt,
-                        "path": p,
-                        "total_risk_score": round(risk, 2),
-                        "total_hops": len(p) - 1,
-                    })
+                p = nx.dijkstra_path(graph.G, source=src, target=tgt, weight="weight")
+                risk = sum(
+                    graph.G[u][v].get("weight",0)
+                    for u, v in zip(p[:-1], p[1:])
+                )
+                all_paths.append({
+                    "source": src,
+                    "target": tgt,
+                    "path": p,
+                    "total_risk_score": round(risk, 2),
+                    "total_hops": len(p) - 1,
+                })
             except (nx.NetworkXNoPath, nx.NodeNotFound):
                 continue
     return all_paths
 
+
+# ══════════════════════════════════════════════════════════════════
+# TEMPORAL ANALYSIS ENGINE
+# ══════════════════════════════════════════════════════════════════
+
+def perform_temporal_analysis(current_paths, history_file=".shadowtracer_history.json"):
+    """
+    Compares the current attack paths against the previous scan's paths.
+    Returns: (list_of_new_paths, is_first_run_boolean)
+    """
+    # Create unique string signatures for current paths (e.g., "nodeA->nodeB->nodeC")
+    current_signatures = {"->".join(p["path"]): p for p in current_paths}
+    is_first_run = not os.path.exists(history_file)
+
+    prev_signatures = {}
+    if not is_first_run:
+        try:
+            with open(history_file, "r") as f:
+                prev_data = json.load(f)
+            # prev_data is expected to be a list of path lists
+            prev_signatures = {"->".join(p): True for p in prev_data}
+        except Exception as e:
+            print(f"[!] Could not read temporal history: {e}")
+
+    # Identify paths that exist now but didn't exist in the previous run
+    new_paths = [p for sig, p in current_signatures.items() if sig not in prev_signatures]
+
+    # Save the current state for the next run
+    try:
+        with open(history_file, "w") as f:
+            json.dump([p["path"] for p in current_paths], f)
+    except Exception as e:
+        print(f"[!] Warning: Could not save temporal history: {e}")
+
+    return new_paths, is_first_run
 
 # ══════════════════════════════════════════════════════════════════
 # REPORT GENERATOR  —  matches sample-output format exactly
@@ -249,15 +307,14 @@ def generate_report(graph, blast_radius_node=None):
     # ── Collect ALL attack paths ────────────────────────────────────
     all_paths = find_all_attack_paths(graph, entry_points, crown_jewels)
 
-    print("[*] Running 'Assumed Breach' lateral movement scan...")
-    all_pods = [n for n, d in G.nodes(data=True) if d.get("type") == "Pod"]
-    all_paths += find_all_attack_paths(graph, all_pods, crown_jewels)
-
     # Deduplicate; sort ascending by risk score (lowest risk first, as in sample)
     unique = {tuple(p["path"]): p for p in all_paths}
     all_paths = sorted(unique.values(), key=lambda x: x["total_risk_score"])
 
     worst_path = all_paths[-1] if all_paths else None
+
+    # Run Temporal Analysis
+    new_paths, is_first_run = perform_temporal_analysis(all_paths)
 
     # ══════════════════════════════════════════════════════════════
     # HEADER
@@ -287,7 +344,7 @@ def generate_report(graph, blast_radius_node=None):
             print(f"  {THIN}")
 
             for u, v in zip(path[:-1], path[1:]):
-                rel       = G[u][v].get("relation", "?")
+                rel       = G[u][v].get("relationship", G[u][v].get("relation", "?"))
                 cve_note  = fmt_cve(u, G)
                 u_label   = fmt_node(u, G)
                 v_label   = fmt_node(v, G)
@@ -358,6 +415,7 @@ def generate_report(graph, blast_radius_node=None):
     print("[ SECTION 4 — CRITICAL NODE ANALYSIS ]")
     print("  Computing... (removing each node and recounting paths)\n")
 
+    all_pods     = [n for n, d in G.nodes(data=True) if d.get('type') == 'Pod']
     all_sources = list(set(p["source"] for p in all_paths) | set(entry_points) | set(all_pods))
     critical_res = graph.identify_critical_node(all_sources, crown_jewels)
 
@@ -382,6 +440,35 @@ def generate_report(graph, blast_radius_node=None):
     print()
 
     # ══════════════════════════════════════════════════════════════
+    # SECTION 5 — TEMPORAL ANALYSIS (State-Diffing)
+    # ══════════════════════════════════════════════════════════════
+    print("[ SECTION 5 — TEMPORAL ANALYSIS (State-Diffing Engine) ]")
+    
+    if is_first_run:
+        print("  [i] First run detected. Baseline cluster state recorded.")
+        print("      Future scans will alert on newly discovered attack paths.\n")
+    elif not new_paths:
+        print("  ✅  No new attack paths detected since last scan. Cluster state is stable.\n")
+    else:
+        print(f"  🚨  ALERT: {len(new_paths)} NEW attack path(s) detected since last scan!\n")
+        for idx, p_data in enumerate(new_paths, 1):
+            score = p_data["total_risk_score"]
+            hops  = p_data["total_hops"]
+            sev   = severity_label(score)
+            path  = p_data["path"]
+
+            print(f"  [NEW] Path #{idx}  |  {hops} hops  |  Risk Score: {score}  [{sev}]")
+            print(f"  {THIN}")
+
+            for u, v in zip(path[:-1], path[1:]):
+                rel       = G[u][v].get("relationship", G[u][v].get("relation", "?"))
+                cve_note  = fmt_cve(u, G)
+                u_label   = fmt_node(u, G)
+                v_label   = fmt_node(v, G)
+                print(f"  {u_label}{cve_note}  --[{rel}]-->  {v_label}")
+            print()
+
+    # ══════════════════════════════════════════════════════════════
     # SUMMARY
     # ══════════════════════════════════════════════════════════════
     print(DIVIDER)
@@ -395,14 +482,30 @@ def generate_report(graph, blast_radius_node=None):
     print()
 
     # ══════════════════════════════════════════════════════════════
-    # RICH DASHBOARD + PDF
+    # RICH DASHBOARD + PDF + INTERACTIVE GRAPH VISUALIZER
     # ══════════════════════════════════════════════════════════════
     blast_for_dashboard = {"total_reachable": len(total_blast_nodes), "max_hops_checked": 3}
 
     from cli_ui_components import display_rich_dashboard
     display_rich_dashboard(worst_path, blast_for_dashboard, cycles, critical_res, graph)
 
-    export_full_pdf_report(all_paths, graph)
+    # Pass temporal data to the PDF reporter
+    export_full_pdf_report(all_paths, graph, new_paths=new_paths, is_first_run=is_first_run)
+
+    # Bonus Task 1 — Interactive HTML Attack Graph
+    try:
+        from graph_visualizer import export_html_visualizer
+        html_path = export_html_visualizer(
+            all_paths    = all_paths,
+            cycles       = cycles,
+            critical_res = critical_res,
+            graph_ref    = graph,
+            blast_sources= blast_sources if blast_sources else entry_points,
+        )
+        print(f"\n[+] Interactive graph visualizer: {html_path}")
+        print(f"    Open in any browser — no server required.\n")
+    except Exception as e:
+        print(f"[!] Graph visualizer export failed: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════
