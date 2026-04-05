@@ -7,8 +7,8 @@ import shlex
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from config import RESOURCE_TYPES, CROWN_JEWEL_KEYWORDS, evaluate_permission
-from cve_scorer import fetch_live_cves
+from .config import RESOURCE_TYPES, CROWN_JEWEL_KEYWORDS, evaluate_permission
+from .cve_scorer import fetch_live_cves
 
 
 # ---------------------------------------------------------------------------
@@ -86,23 +86,51 @@ class UnifiedK8sCollector:
     # ------------------------------------------------------------------
 
     def run_kubectl_json(self, resource):
+        """Fetch resource from kubectl. Raises exception on failure."""
         cmd = f"kubectl get {resource} -A -o json"
         try:
             result = subprocess.run(
-                shlex.split(cmd), capture_output=True, text=True, check=True
+                shlex.split(cmd), capture_output=True, text=True, check=False
             )
+            if result.returncode != 0:
+                error_msg = result.stderr.strip() if result.stderr else result.stdout.strip()
+                raise RuntimeError(f"kubectl failed for {resource}: {error_msg}")
             return json.loads(result.stdout)
-        except Exception:
-            return {"items": []}
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Invalid JSON from kubectl get {resource}: {e}")
+        except FileNotFoundError:
+            raise RuntimeError("kubectl not found in PATH. Install kubectl or use --mock mode.")
+        except Exception as e:
+            raise RuntimeError(f"Error fetching {resource}: {e}")
 
     def fetch_all_concurrently(self):
-        print("[*] Collecting Kubernetes resources concurrently...")
+        """Collect all K8s resources. Returns tuple (success, error_details).
+        Suppresses verbose errors and only reports overall status."""
+        print("[*] Collecting Kubernetes resources...")
+        failed_count = 0
+        successful_resources = []
+        
         with ThreadPoolExecutor(max_workers=6) as executor:
             futures = {executor.submit(self.run_kubectl_json, r): r for r in RESOURCE_TYPES}
             for future in as_completed(futures):
                 resource_name = futures[future]
-                self.snapshot[resource_name] = future.result()
-                print(f"[+] {resource_name} collected")
+                try:
+                    self.snapshot[resource_name] = future.result()
+                    successful_resources.append(resource_name)
+                except Exception:
+                    # Silently track failures without printing verbose errors
+                    failed_count += 1
+        
+        # Only report overall status
+        if not successful_resources:
+            # All resources failed - fatal error
+            return False, None
+        
+        if failed_count > 0:
+            # Some resources failed but we have partial data
+            return True, f"Warning: {failed_count} resource(s) unavailable"
+        
+        return True, None
 
     # ------------------------------------------------------------------
     # Node helpers

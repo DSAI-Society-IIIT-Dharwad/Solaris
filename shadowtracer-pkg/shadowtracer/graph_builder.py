@@ -2,7 +2,7 @@ import json
 import networkx as nx
 import argparse
 from datetime import datetime
-from pdf_reporter import export_full_pdf_report
+from .pdf_reporter import export_full_pdf_report
 import os
 
 
@@ -191,7 +191,7 @@ class AttackPathGraph:
         node_type = node_data.get("type", "unknown")
         name, _ = short_label(best_node, self.G)
 
-        from config import REMEDIATION_MAP
+        from .config import REMEDIATION_MAP
         hint_key = {
             "ServiceAccount": "runs-as-sa",
             "Role": "wildcard-rbac",
@@ -416,7 +416,7 @@ def generate_report(graph, blast_radius_node=None):
     print("  Computing... (removing each node and recounting paths)\n")
 
     all_pods     = [n for n, d in G.nodes(data=True) if d.get('type') == 'Pod']
-    all_sources = list(set(p["source"] for p in all_paths) | set(entry_points) | set(all_pods))
+    all_sources = list(set(p["source"] for p in all_paths) | set(entry_points))# | set(all_pods))
     critical_res = graph.identify_critical_node(all_sources, crown_jewels)
 
     baseline_count = critical_res.get("total_paths", len(all_paths))
@@ -486,7 +486,7 @@ def generate_report(graph, blast_radius_node=None):
     # ══════════════════════════════════════════════════════════════
     blast_for_dashboard = {"total_reachable": len(total_blast_nodes), "max_hops_checked": 3}
 
-    from cli_ui_components import display_rich_dashboard
+    from .cli_ui_components import display_rich_dashboard
     display_rich_dashboard(worst_path, blast_for_dashboard, cycles, critical_res, graph)
 
     # Pass temporal data to the PDF reporter
@@ -494,7 +494,7 @@ def generate_report(graph, blast_radius_node=None):
 
     # Bonus Task 1 — Interactive HTML Attack Graph
     try:
-        from graph_visualizer import export_html_visualizer
+        from .graph_visualizer import export_html_visualizer
         html_path = export_html_visualizer(
             all_paths    = all_paths,
             cycles       = cycles,

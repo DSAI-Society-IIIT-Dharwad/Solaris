@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shadowtracer"
+version = "1.0.0"
+description = "Kubernetes Attack Path Visualizer & Risk Analyzer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "networkx",
+    "reportlab",
+    "rich",
+    "requests",
+    "python-dotenv",
+]
+
+[project.scripts]
+shadowtracer = "shadowtracer.shadowtracer:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shadowtracer*"]

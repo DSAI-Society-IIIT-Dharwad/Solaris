@@ -7,9 +7,9 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.align import Align
 from rich.text import Text
 
-from data_collector import UnifiedK8sCollector
-from graph_builder import AttackPathGraph, generate_report
-from config import RESOURCE_TYPES
+from .data_collector import UnifiedK8sCollector
+from .graph_builder import AttackPathGraph, generate_report
+from .config import RESOURCE_TYPES
 
 console = Console()
 
@@ -19,7 +19,7 @@ GRAPH_FILE = "cluster-graph.json"
 def display_splash():
     ascii_art = r"""
     [bold cyan]
-██████  ██   ██  █████  ██████   ██████  ██     ██ 
+ ██████  ██   ██  █████  ██████   ██████  ██     ██ 
 ██       ██   ██ ██   ██ ██   ██ ██    ██ ██     ██ 
  ██████  ███████ ███████ ██   ██ ██    ██ ██  █  ██ 
       ██ ██   ██ ██   ██ ██   ██ ██    ██ ██ ███ ██ 
@@ -39,29 +39,36 @@ def display_splash():
 
 
 def run_live_ingestion():
-    """Phase 1: collect from a live cluster via kubectl."""
+    """Phase 1: collect from a live cluster via kubectl.
+    
+    Returns:
+        collector: UnifiedK8sCollector with cluster data
+        
+    Raises:
+        RuntimeError: If kubectl is not available or data collection fails completely
+    """
     collector = UnifiedK8sCollector()
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        console=console,
-    ) as progress:
-        overall = progress.add_task("[yellow]Scanning Cluster...", total=len(RESOURCE_TYPES))
-
-        with collector.executor_class(max_workers=6) as executor:
-            futures = {executor.submit(collector.run_kubectl_json, r): r for r in RESOURCE_TYPES}
-            for future in collector.as_completed_func(futures):
-                res_name = futures[future]
-                collector.snapshot[res_name] = future.result()
-                progress.update(overall, advance=1, description=f"[green]Fetched {res_name}")
-                time.sleep(0.05)
-
+    
+    # Fetch all resources concurrently
+    success, error_detail = collector.fetch_all_concurrently()
+    
+    if not success:
+        # Complete failure - no data collected at all
+        raise RuntimeError(
+            "Unable to connect to Kubernetes cluster.\n"
+            "Please check your kubeconfig and cluster connection."
+        )
+    
+    # Validate that we actually collected data
+    if not collector.snapshot or all(len(v.get("items", [])) == 0 for v in collector.snapshot.values()):
+        raise RuntimeError(
+            "Kubernetes cluster returned no resources.\n"
+            "Please verify you have permissions to access the cluster."
+        )
+    
     collector.process_cluster_data()
     collector.export(GRAPH_FILE)
-    return collector
+    return collector, success, error_detail
 
 
 def run_mock_mode(input_file):
@@ -87,16 +94,27 @@ def run_analysis_dashboard(blast_radius_node=None, mock=False, mock_file=GRAPH_F
         graph_input = mock_file
     else:
         # ── LIVE CLUSTER MODE ─────────────────────────────────────────────
-        console.print("[bold blue][*] Phase 1 — Live cluster ingestion via kubectl[/bold blue]")
+        console.print("[bold blue][*] Phase 1 — Live cluster ingestion via kubectl[/bold blue]\n")
         try:
             run_live_ingestion()
+            graph_input = GRAPH_FILE
+        except RuntimeError as e:
+            # Clean error message with actionable suggestions
+            error_msg = str(e)
+            console.print(f"[bold red][!] {error_msg}[/bold red]\n")
+            console.print("[bold white]Suggested Actions:[/bold white]")
+            console.print(f"  1. Use local graph:      [cyan]shadowtracer --json cluster-graph.json[/cyan]")
+            console.print(f"  2. Check kubectl:        [cyan]kubectl config current-context[/cyan]")
+            console.print(f"  3. Check k8s access:     [cyan]kubectl get nodes[/cyan]")
+            
+            if os.path.exists(mock_file):
+                console.print(f"  4. Use specific file:    [cyan]shadowtracer --json {mock_file}[/cyan]")
+            
+            console.print()
+            raise SystemExit(1)
         except Exception as e:
-            console.print(f"[yellow][!] kubectl ingestion failed ({e}). Falling back to mock file.[/yellow]")
-            if not os.path.exists(mock_file):
-                console.print(f"[bold red][!] No fallback file found at '{mock_file}'. Aborting.[/bold red]")
-                raise SystemExit(1)
-            console.print(f"[yellow]    Using existing: {mock_file}[/yellow]")
-        graph_input = GRAPH_FILE
+            console.print(f"[bold red][!] Unexpected error: {e}[/bold red]")
+            raise SystemExit(1)
 
     console.print("\n[bold blue][*] Phase 2 — Building Attack Graph...[/bold blue]")
     ag = AttackPathGraph()
@@ -110,27 +128,28 @@ def run_analysis_dashboard(blast_radius_node=None, mock=False, mock_file=GRAPH_F
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="shadowtracerv1 — Kubernetes Attack Path Visualizer"
+        description="shadowtracer — Kubernetes Attack Path Visualizer"
     )
     parser.add_argument(
         "-b", "--blast-node", default=None,
         help="Node ID to use as blast-radius source (defaults to worst-path source)",
     )
     parser.add_argument(
-        "-m", "--mock", action="store_true",
-        help="Skip kubectl and load a pre-built cluster-graph.json (offline/demo mode)",
-    )
-    parser.add_argument(
-        "-i", "--input", default=GRAPH_FILE,
-        help=f"Path to cluster-graph.json when using --mock (default: {GRAPH_FILE})",
+        "--json", dest="json_file", default=None,
+        help="Load cluster graph from JSON file instead of kubectl (e.g., shadowtracer --json cluster-graph.json)",
     )
     args = parser.parse_args()
+
+    # If --json is provided, use it as the input file (sets mock=True)
+    # Otherwise try live kubectl
+    use_json_file = args.json_file is not None
+    input_file = args.json_file if use_json_file else GRAPH_FILE
 
     try:
         run_analysis_dashboard(
             blast_radius_node=args.blast_node,
-            mock=args.mock,
-            mock_file=args.input,
+            mock=use_json_file,
+            mock_file=input_file,
         )
     except KeyboardInterrupt:
         console.print("\n[bold red]Terminated by user.[/bold red]")
