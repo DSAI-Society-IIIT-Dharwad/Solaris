@@ -7,8 +7,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.align import Align
 from rich.text import Text
 
-from final_data_collector import UnifiedK8sCollector
-from final_graph_builder import AttackPathGraph, generate_report
+from data_collector import UnifiedK8sCollector
+from graph_builder import AttackPathGraph, generate_report
 from config import RESOURCE_TYPES
 
 console = Console()

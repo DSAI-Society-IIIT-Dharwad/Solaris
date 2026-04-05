@@ -118,7 +118,7 @@ python cli_dashboard.py --mock --input path/to/graph.json
 python cli_dashboard.py --mock --blast-node "Pod:default:my-pod"
 
 # Graph engine only (no kubectl)
-python final_graph_builder.py --input cluster-graph.json
+python graph_builder.py --input cluster-graph.json
 ```
 
 ---

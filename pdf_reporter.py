@@ -37,29 +37,29 @@ from reportlab.platypus.flowables import Flowable
 from config import REMEDIATION_MAP
 
 # ═══════════════════════════════════════════════════════════════
-# PALETTE  — calm, professional, easy on the eyes
+# PALETTE  — high contrast, modern professional
 # ═══════════════════════════════════════════════════════════════
-INK         = colors.HexColor('#1c2333')
-NAVY        = colors.HexColor('#1e3a5f')
-STEEL       = colors.HexColor('#2c4a6e')
-CYAN        = colors.HexColor('#1a8fa0')
-SILVER      = colors.HexColor('#dce3ed')
-GHOST       = colors.HexColor('#f2f5f9')
+INK         = colors.HexColor('#0F172A')
+NAVY        = colors.HexColor('#1E3A8A')
+STEEL       = colors.HexColor('#334155')
+CYAN        = colors.HexColor('#0284C7')
+SILVER      = colors.HexColor('#CBD5E1')
+GHOST       = colors.HexColor('#F8FAFC')
 WHITE       = colors.white
 
-SEV_CRITICAL = colors.HexColor('#c0392b')
-SEV_HIGH     = colors.HexColor('#d35400')
-SEV_MEDIUM   = colors.HexColor('#b7770d')
-SEV_LOW      = colors.HexColor('#1e8449')
+SEV_CRITICAL = colors.HexColor('#DC2626')
+SEV_HIGH     = colors.HexColor('#EA580C')
+SEV_MEDIUM   = colors.HexColor('#D97706')
+SEV_LOW      = colors.HexColor('#16A34A')
 
-BG_CRITICAL  = colors.HexColor('#fdecea')
-BG_HIGH      = colors.HexColor('#fef0e6')
-BG_MEDIUM    = colors.HexColor('#fefae6')
-BG_LOW       = colors.HexColor('#eafaf1')
+BG_CRITICAL  = colors.HexColor('#FEF2F2')
+BG_HIGH      = colors.HexColor('#FFF7ED')
+BG_MEDIUM    = colors.HexColor('#FFFBEB')
+BG_LOW       = colors.HexColor('#F0FDF4')
 
-CROWN_RED    = colors.HexColor('#922b21')
-REC_BG       = colors.HexColor('#eaf4fb')
-REC_BORDER   = colors.HexColor('#2980b9')
+CROWN_RED    = colors.HexColor('#991B1B')
+REC_BG       = colors.HexColor('#EFF6FF')
+REC_BORDER   = colors.HexColor('#3B82F6')
 
 PAGE_W, PAGE_H = letter
 BODY_W = PAGE_W - 1.5 * inch
@@ -153,45 +153,46 @@ class LeftBorderPanel(Flowable):
 # ═══════════════════════════════════════════════════════════════
 
 def _styles():
-    def ps(name, font='Helvetica', size=9, leading=None, color=INK,
+    def ps(name, font='Helvetica', size=10, leading=None, color=INK,
            align=TA_LEFT, sb=0, sa=0, **kw):
         return ParagraphStyle(
             name, fontName=font, fontSize=size,
-            leading=leading or round(size * 1.45),
+            leading=leading or round(size * 1.5),
             textColor=color, alignment=align,
             spaceBefore=sb, spaceAfter=sa, **kw)
 
     S = {}
     # Cover
-    S['c_title']   = ps('c_title',   'Helvetica-Bold',   30, color=WHITE,  align=TA_CENTER, leading=36)
-    S['c_sub']     = ps('c_sub',     'Helvetica',        13, color=SILVER, align=TA_CENTER)
-    S['c_meta']    = ps('c_meta',    'Helvetica',         9, color=SILVER, align=TA_CENTER)
-    S['c_tagline'] = ps('c_tagline', 'Helvetica-Oblique', 8,
+    S['c_title']   = ps('c_title',   'Helvetica-Bold',   32, color=WHITE,  align=TA_CENTER, leading=38)
+    S['c_sub']     = ps('c_sub',     'Helvetica',        14, color=SILVER, align=TA_CENTER)
+    S['c_meta']    = ps('c_meta',    'Helvetica',        10, color=SILVER, align=TA_CENTER)
+    S['c_tagline'] = ps('c_tagline', 'Helvetica-Oblique', 9,
                         color=colors.HexColor('#7fb3d3'), align=TA_CENTER)
     # Stat tiles
-    S['t_num']     = ps('t_num',     'Helvetica-Bold',   20, color=NAVY,   align=TA_CENTER, leading=24)
-    S['t_lbl']     = ps('t_lbl',     'Helvetica',         7, color=STEEL,  align=TA_CENTER, leading=10)
+    S['t_num']     = ps('t_num',     'Helvetica-Bold',   22, color=NAVY,   align=TA_CENTER, leading=26)
+    S['t_lbl']     = ps('t_lbl',     'Helvetica',         9, color=STEEL,  align=TA_CENTER, leading=12)
     # Banner / headings
-    S['banner']    = ps('banner',    'Helvetica-Bold',   10, color=WHITE,  leading=14)
-    S['h3']        = ps('h3',        'Helvetica-Bold',    9, color=STEEL,  sb=6, sa=2)
+    S['banner']    = ps('banner',    'Helvetica-Bold',   11, color=WHITE,  leading=15)
+    S['h3']        = ps('h3',        'Helvetica-Bold',   10, color=STEEL,  sb=6, sa=2)
     # Body
-    S['body']      = ps('body',      'Helvetica',         9, color=INK,    leading=13)
-    S['body_b']    = ps('body_b',    'Helvetica-Bold',    9, color=INK,    leading=13)
-    S['body_sm']   = ps('body_sm',   'Helvetica',         8, color=INK,    leading=11)
-    S['label']     = ps('label',     'Helvetica-Bold',    8, color=STEEL,  leading=11)
-    S['mono']      = ps('mono',      'Courier',           8, color=INK,    leading=11)
-    S['mono_c']    = ps('mono_c',    'Courier-Bold',      8, color=CYAN,   leading=11)
+    S['body']      = ps('body',      'Helvetica',        10, color=INK,    leading=15)
+    S['body_b']    = ps('body_b',    'Helvetica-Bold',   10, color=INK,    leading=15)
+    S['body_sm']   = ps('body_sm',   'Helvetica',         9, color=INK,    leading=13)
+    S['label']     = ps('label',     'Helvetica-Bold',    9, color=STEEL,  leading=13)
+    S['th']        = ps('th',        'Helvetica-Bold',    9, color=WHITE,  leading=13)
+    S['mono']      = ps('mono',      'Courier',           9, color=INK,    leading=13)
+    S['mono_c']    = ps('mono_c',    'Courier-Bold',      9, color=CYAN,   leading=13)
     # Path cards
-    S['p_hdr']     = ps('p_hdr',     'Helvetica-Bold',    9, color=INK,    leading=13)
-    S['p_node']    = ps('p_node',    'Helvetica-Bold',    9, color=NAVY,   leading=13)
-    S['p_crown']   = ps('p_crown',   'Helvetica-Bold',    9, color=CROWN_RED, leading=13)
-    S['p_rel']     = ps('p_rel',     'Courier-Bold',      8, color=CYAN,   leading=11)
+    S['p_hdr']     = ps('p_hdr',     'Helvetica-Bold',   10, color=INK,    leading=15)
+    S['p_node']    = ps('p_node',    'Helvetica-Bold',   10, color=NAVY,   leading=15)
+    S['p_crown']   = ps('p_crown',   'Helvetica-Bold',   10, color=CROWN_RED, leading=15)
+    S['p_rel']     = ps('p_rel',     'Courier-Bold',      9, color=CYAN,   leading=13)
     # Recommendation
-    S['rec_t']     = ps('rec_t',     'Helvetica-Bold',    9, color=NAVY,   leading=13)
-    S['rec_b']     = ps('rec_b',     'Helvetica',         9, color=STEEL,  leading=13)
+    S['rec_t']     = ps('rec_t',     'Helvetica-Bold',   10, color=NAVY,   leading=15)
+    S['rec_b']     = ps('rec_b',     'Helvetica',        10, color=STEEL,  leading=15)
     # Summary footer
-    S['sum_l']     = ps('sum_l',     'Helvetica',         9, color=SILVER, leading=13)
-    S['sum_v']     = ps('sum_v',     'Helvetica-Bold',    9, color=WHITE,  leading=13)
+    S['sum_l']     = ps('sum_l',     'Helvetica',        10, color=SILVER, leading=15)
+    S['sum_v']     = ps('sum_v',     'Helvetica-Bold',   10, color=WHITE,  leading=15)
     return S
 
 
@@ -287,12 +288,12 @@ def _cover(story, S, stats):
 
     tw = BODY_W / 6
     tiles = Table([[
-        Table([_tile("Total Paths",  total,    NAVY)],        colWidths=[tw]),
-        Table([_tile("Critical",     critical, SEV_CRITICAL)],colWidths=[tw]),
-        Table([_tile("High",         high,     SEV_HIGH)],    colWidths=[tw]),
-        Table([_tile("Medium",       medium,   SEV_MEDIUM)],  colWidths=[tw]),
-        Table([_tile("Nodes",        nodes,    STEEL)],       colWidths=[tw]),
-        Table([_tile("Edges",        edges,    STEEL)],       colWidths=[tw]),
+        _tile("Total Paths",  total,    NAVY),
+        _tile("Critical",     critical, SEV_CRITICAL),
+        _tile("High",         high,     SEV_HIGH),
+        _tile("Medium",       medium,   SEV_MEDIUM),
+        _tile("Nodes",        nodes,    STEEL),
+        _tile("Edges",        edges,    STEEL),
     ]], colWidths=[tw]*6)
     tiles.setStyle(TableStyle([
         ('BOX',           (0, 0), (-1, -1), 1,   SILVER),
@@ -364,44 +365,47 @@ def _path_card(idx, p_data, graph_ref, S):
         ('BOX',           (0, 0), (-1, -1), 0.5, sev_c),
     ]))
 
-    # Hop rows
+    # Hop rows - Using column layout but tightened for less space
     hop_rows = []
-    for u, v in zip(path[:-1], path[1:]):
+    for i, u in enumerate(path[:-1]):
+        v = path[i + 1]
         u_name, u_type = _node_label(u, G)
         rel    = _edge_rel(u, v, G)
         u_data = G.nodes.get(u, {})
         cves   = u_data.get('cves', [])
         cve_str = ''
         if cves:
-            cve_str = (f'  <font color="#d35400">'
-                       f'[{cves[0]}  CVSS {u_data.get("risk_score", "")}]'
-                       f'</font>')
+            cvss_score = u_data.get("risk_score", "")
+            cve_str = (f'  <font color="{SEV_HIGH.hexval()}">'
+                       f'[ {cves[0]} (CVSS {cvss_score}) ]</font>')
+
         hop_rows.append([
             Paragraph(
                 f'<b>{u_name}</b>  '
-                f'<font color="#6c7a89">({u_type})</font>{cve_str}',
+                f'<font color="{STEEL.hexval()}">({u_type})</font>{cve_str}',
                 S['body']),
-            Paragraph(f'--[{rel}]--&gt;', S['p_rel']),
+            Paragraph(
+                f'<font color="{CYAN.hexval()}" name="Courier-Bold">--[{rel.replace("-", " ")}]--&gt;</font>', 
+                S['p_rel']),
         ])
 
     # Crown jewel row
     l_name, l_type = _node_label(path[-1], G)
     hop_rows.append([
         Paragraph(
-            f'<font color="#922b21"><b>{l_name}</b>'
-            f'  ({l_type})  &lt;-- CROWN JEWEL</font>',
+            f'<font color="{CROWN_RED.hexval()}"><b>{l_name}</b>'
+            f'  ({l_type})   &lt;-- CROWN JEWEL</font>',
             S['p_crown']),
-        Paragraph('', S['body']),
+        Paragraph('', S['body'])
     ])
 
-    hop_t = Table(hop_rows,
-                  colWidths=[BODY_W * 0.60, BODY_W * 0.40])
+    hop_t = Table(hop_rows, colWidths=[BODY_W * 0.70, BODY_W * 0.30])
     hop_t.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, -1), GHOST),
         ('TOPPADDING',    (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 10),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
         ('LINEBELOW',     (0, 0), (-1, -2), 0.3, SILVER),
         ('BOX',           (0, 0), (-1, -1), 0.5, SILVER),
@@ -437,7 +441,7 @@ def _section2(story, S, all_paths, graph_ref):
     if not sources:
         sources = [n for n, a in G.nodes(data=True) if a.get('is_source')]
 
-    hdr = [Paragraph(t, S['label']) for t in
+    hdr = [Paragraph(t, S['th']) for t in
            ['Source Node', 'Type', 'Reachable', 'Hop Breakdown']]
     rows = [hdr]
     for src in sources:
@@ -448,8 +452,10 @@ def _section2(story, S, all_paths, graph_ref):
                 by_hop.setdefault(dist, []).append(node)
         total   = sum(len(v) for v in by_hop.values())
         s_name, s_type = _node_label(src, G)
-        lines = [f"Hop {h}: {', '.join(_node_label(n,G)[0] for n in by_hop[h])}"
+        lines = [f"<b>Hop {h}</b>: <font color='{STEEL.hexval()}'>{', '.join(_node_label(n,G)[0] for n in by_hop[h])}</font>"
                  for h in sorted(by_hop)]
+        
+        hop_markup = '<br/>'.join(lines) if lines else '—'
         rows.append([
             Paragraph(f'<b>{s_name}</b>', S['body']),
             Paragraph(s_type, S['body_sm']),
@@ -457,10 +463,10 @@ def _section2(story, S, all_paths, graph_ref):
                       ParagraphStyle('rc', parent=S['body_b'],
                                      alignment=TA_CENTER,
                                      textColor=NAVY if total else STEEL)),
-            Paragraph('\n'.join(lines) if lines else '—', S['mono']),
+            Paragraph(hop_markup, S['mono']),
         ])
 
-    cw = [BODY_W * r for r in [0.23, 0.15, 0.10, 0.52]]
+    cw = [BODY_W * r for r in [0.22, 0.14, 0.12, 0.52]]
     t = Table(rows, colWidths=cw, repeatRows=1)
     t.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, 0),  NAVY),
@@ -549,27 +555,25 @@ def _section4(story, S, graph_ref, all_paths):
     story.append(Paragraph("Top 5 highest-impact nodes to remove:", S['h3']))
     story.append(Spacer(1, 0.04*inch))
 
-    max_red = top5[0][1] if top5 else 1
-    hdr     = [Paragraph(t, S['label'])
-               for t in ['Node', 'Type', 'Paths Removed', 'Impact Bar']]
+    hdr     = [Paragraph(t, S['th'])
+               for t in ['Critical Node', 'Type', 'Risk Mitigation Impact']]
     t5_rows = [hdr]
     for node_id, reduction, _ in top5:
         n_name, n_type = _node_label(node_id, G)
         pct = int(round(reduction / baseline * 100)) if baseline else 0
+        
+        impact_color = SEV_CRITICAL.hexval() if pct >= 25 else (SEV_HIGH.hexval() if pct >= 10 else NAVY.hexval())
+
         t5_rows.append([
             Paragraph(f'<b>{n_name}</b>', S['body']),
             Paragraph(n_type, S['body_sm']),
             Paragraph(
-                f'{reduction}  ({pct}%)',
-                ParagraphStyle('rc2', parent=S['body_b'],
-                               alignment=TA_CENTER, textColor=SEV_CRITICAL)),
-            Paragraph(
-                f'<font color="#1a8fa0" fontName="Courier">'
-                f'{_bar(reduction, max_red, 22)}</font>',
+                f'<font color="{impact_color}"><b>{reduction} paths mitigated</b></font><br/>'
+                f'<font color="{STEEL.hexval()}" size="8">({pct}% of total risk)</font>',
                 S['body']),
         ])
 
-    cw = [BODY_W * r for r in [0.28, 0.18, 0.18, 0.36]]
+    cw = [BODY_W * r for r in [0.40, 0.20, 0.40]]
     t5 = Table(t5_rows, colWidths=cw)
     t5.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, 0),  STEEL),
@@ -656,8 +660,8 @@ def _section5(story, S, all_paths, graph_ref):
             "No specific vulnerability types mapped to remediations.", S['body']))
         return
 
-    hdr = [Paragraph('Vulnerability Type', S['label']),
-           Paragraph('Recommended Action', S['label'])]
+    hdr = [Paragraph('Vulnerability Type', S['th']),
+           Paragraph('Recommended Action', S['th'])]
     rem_rows = [hdr]
     for vuln in sorted(detected):
         rem_rows.append([

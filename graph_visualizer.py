@@ -181,12 +181,8 @@ def _build_html(payload):
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Shadow Tracer — Attack Graph</title>
-<!-- Fonts: async so they never block layout. File works offline with system fallbacks. -->
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Exo+2:wght@300;400;600&display=swap"
-      rel="stylesheet" media="print" onload="this.media='all'"/>
-<!-- D3 intentionally NOT loaded here — it is at the bottom of body so the
-     flex layout is fully painted before any JS measures offsetWidth/Height -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script><link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet"/>
 
 <style>
 /* ═══════════════════════════════════════════════════
@@ -240,7 +236,7 @@ def _build_html(payload):
 *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
 body {{
-  font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Exo 2', sans-serif;
   background: var(--bg-void);
   color: var(--text-primary);
   height: 100vh;
@@ -448,6 +444,55 @@ svg#graph:active {{ cursor: grabbing; }}
 }}
 .edge-tooltip.visible {{ opacity: 1; }}
 
+/* ── NODE HOVER TOOLTIP ──────────────────────────── */
+.node-tooltip {{
+  position: absolute;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  border-radius: 5px;
+  padding: 10px 13px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--text-primary);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 200;
+  min-width: 170px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}}
+.node-tooltip.visible {{ opacity: 1; }}
+.node-tooltip .nt-name {{
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+  line-height: 1.2;
+}}
+.node-tooltip .nt-badge {{
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid;
+  margin-bottom: 7px;
+}}
+.node-tooltip .nt-row {{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+}}
+.node-tooltip .nt-row:last-child {{ border-bottom: none; }}
+.node-tooltip .nt-k {{ color: var(--text-muted); }}
+.node-tooltip .nt-v {{ color: var(--text-primary); font-weight: 600; }}
+.node-tooltip .nt-cve {{ color: var(--accent-red); }}
+.node-tooltip .nt-paths {{ color: var(--accent-amber); }}
+
 /* ── SIDE PANEL ───────────────────────────────────── */
 .side-panel {{
   width: 320px;
@@ -505,10 +550,10 @@ svg#graph:active {{ cursor: grabbing; }}
   font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-bottom: 8px;
   padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-bright);
 }}
 
 /* ── NODE DETAIL CARD ─────────────────────────────── */
@@ -566,7 +611,7 @@ svg#graph:active {{ cursor: grabbing; }}
   font-size: 12px;
 }}
 .detail-row .dk {{ color: var(--text-muted); font-family: 'Share Tech Mono', monospace; font-size: 10px; }}
-.detail-row .dv {{ color: var(--text-primary); font-weight: 600; }}
+.detail-row .dv {{ color: var(--text-primary); font-weight: 600; font-size: 12px; }}
 
 .cve-tag {{
   display: inline-block;
@@ -682,15 +727,17 @@ svg#graph:active {{ cursor: grabbing; }}
 }}
 .critical-card .cn-impact {{
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  opacity: 0.85;
 }}
 .critical-card .cn-rec {{
   margin-top: 8px;
   font-size: 11px;
   color: var(--accent-amber);
-  line-height: 1.5;
-  border-top: 1px solid var(--border);
+  line-height: 1.6;
+  border-top: 1px solid var(--border-bright);
   padding-top: 8px;
+  font-weight: 500;
 }}
 
 .top5-row {{
@@ -702,10 +749,10 @@ svg#graph:active {{ cursor: grabbing; }}
   font-size: 10px;
   border-bottom: 1px solid var(--border);
 }}
-.top5-name {{ color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+.top5-name {{ color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }}
 .top5-bar-bg {{ width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }}
-.top5-bar-fill {{ height: 100%; background: var(--accent-purple); border-radius: 2px; }}
-.top5-count {{ color: var(--accent-red); min-width: 24px; text-align: right; }}
+.top5-bar-fill {{ height: 100%; background: var(--accent-purple); border-radius: 2px; box-shadow: 0 0 4px rgba(176,96,255,0.5); }}
+.top5-count {{ color: var(--accent-red); min-width: 36px; text-align: right; font-size: 11px; font-weight: 600; }}
 
 /* ── CYCLE ITEM ───────────────────────────────────── */
 .cycle-item {{
@@ -938,6 +985,8 @@ svg#graph:active {{ cursor: grabbing; }}
 
     <!-- Edge tooltip -->
     <div class="edge-tooltip" id="edge-tooltip"></div>
+    <!-- Node hover tooltip -->
+    <div class="node-tooltip" id="node-tooltip"></div>
   </div>
 
   <!-- ── SIDE PANEL ── -->
@@ -981,11 +1030,7 @@ svg#graph:active {{ cursor: grabbing; }}
   <div class="toolbar-right" id="toolbar-hint">Scroll to zoom · Drag to pan · Click node to inspect</div>
 </div>
 
-<!-- ════════════════════ D3 + VISUALIZATION ════════════════════ -->
-<!-- D3 loads HERE (bottom of body) so all flex layout is already painted.
-     The script runs synchronously after D3 loads, guaranteed correct dimensions. -->
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-
+<!-- ════════════════════ D3 VISUALIZATION ════════════════════ -->
 <script>
 // ═══════════════════════════════════════════════════════════════
 // INJECTED DATA
@@ -1026,7 +1071,18 @@ function nodeRadius(d) {{
 }}
 
 // ═══════════════════════════════════════════════════════════════
-// TOPBAR STATS  (safe to run immediately — only touches text nodes)
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let selectedNode     = null;
+let selectedPathIdx  = -1;
+let activeFilter     = 'all';  // all | paths | cycles | blast | critical
+
+// Sets of highlighted IDs for current filter
+let hlNodes = new Set();
+let hlEdges = new Set(); // "src::tgt" keys
+
+// ═══════════════════════════════════════════════════════════════
+// TOPBAR STATS
 // ═══════════════════════════════════════════════════════════════
 const m = DATA.metadata;
 document.getElementById('stat-nodes').textContent    = m.node_count;
@@ -1037,26 +1093,6 @@ document.getElementById('stat-ts').textContent       = m.generated;
 
 const cn = DATA.nodes.find(n => n.id === DATA.critical_node);
 document.getElementById('stat-critical').textContent = cn ? cn.name : 'None';
-
-// ═══════════════════════════════════════════════════════════════
-// DEFER ALL D3 / DOM WORK UNTIL LAYOUT IS FULLY PAINTED
-// D3 is loaded at bottom of body so the HTML is already in the DOM.
-// requestAnimationFrame double-pump guarantees the browser has completed
-// at least one full layout+paint pass before we read offsetWidth/Height.
-// ═══════════════════════════════════════════════════════════════
-requestAnimationFrame(function() {{
-  requestAnimationFrame(function() {{
-
-// ═══════════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════════
-let selectedNode     = null;
-let selectedPathIdx  = -1;
-let activeFilter     = 'all';  // all | paths | cycles | blast | critical
-
-// Sets of highlighted IDs for current filter
-let hlNodes = new Set();
-let hlEdges = new Set(); // "src::tgt" keys
 
 // ═══════════════════════════════════════════════════════════════
 // D3 FORCE SIMULATION
@@ -1119,6 +1155,9 @@ const linkSel = root.append('g').attr('class', 'links-layer')
   }})
   .attr('data-key', d => d._source_id + '::' + d._target_id);
 
+// ── OVERLAY LAYER (blast rings, critical badge) ───────────────
+const overlayG = root.append('g').attr('class', 'overlay-layer');
+
 // ── NODES ─────────────────────────────────────────────────────
 const nodeG = root.append('g').attr('class', 'nodes-layer')
   .selectAll('g')
@@ -1148,10 +1187,7 @@ nodeG.append('circle')
   .attr('class', 'node-circle')
   .attr('r', nodeRadius)
   .attr('fill', nodeColor)
-  .attr('stroke', d => {{
-    const c = d3.color(nodeColor(d));
-    return c ? c.darker(0.6).toString() : '#334455';
-  }})
+  .attr('stroke', d => d3.color(nodeColor(d)).darker(0.5))
   .on('click', onNodeClick)
   .on('mouseenter', onNodeHover)
   .on('mouseleave', onNodeLeave);
@@ -1199,14 +1235,14 @@ simulation.on('tick', () => {{
     .attr('x2', d => d.target.x)
     .attr('y2', d => d.target.y);
 
-  // Re-sync string IDs after D3 has replaced source/target with objects
-  // (only needed once but cheap to do every tick)
-  simLinks.forEach(l => {{
-    if (l.source && typeof l.source === 'object') l._source_id = l.source.id;
-    if (l.target && typeof l.target === 'object') l._target_id = l.target.id;
-  }});
-
   nodeG.attr('transform', d => `translate(${{d.x}},${{d.y}})`);
+
+  // Keep blast rings in sync with node positions during simulation
+  if (activeFilter === 'blast') {{
+    overlayG.selectAll('circle.blast-ring').each(function(_, i) {{
+      // Rings are rebuilt on next applyFilter call — just trigger a redraw
+    }});
+  }}
 
   applyFilter(activeFilter, false);
 }});
@@ -1230,29 +1266,14 @@ document.getElementById('zoom-out').onclick = () => svg.transition().call(zoom.s
 document.getElementById('zoom-fit').onclick  = fitView;
 
 function fitView() {{
-  const w = W(), h = H();
-  if (!w || !h) return;   // layout not ready yet
-  const pad = 60;
-
-  // Filter out nodes with undefined/NaN positions (not yet simulated)
-  const positioned = simNodes.filter(n => n.x != null && !isNaN(n.x) && n.y != null && !isNaN(n.y));
-  if (positioned.length === 0) return;
-
-  const xs = positioned.map(n => n.x);
-  const ys = positioned.map(n => n.y);
+  const w = W(), h = H(), pad = 60;
+  const xs = simNodes.map(n => n.x), ys = simNodes.map(n => n.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   const y0 = Math.min(...ys), y1 = Math.max(...ys);
-
-  // If all nodes are piled at the same point, use a default scale
-  const gw = x1 - x0 || w * 0.5;
-  const gh = y1 - y0 || h * 0.5;
-
-  const scale = Math.min((w - pad * 2) / gw, (h - pad * 2) / gh, 2);
-  if (!isFinite(scale) || scale <= 0) return;
-
-  const tx = (w - scale * gw) / 2 - scale * x0;
-  const ty = (h - scale * gh) / 2 - scale * y0;
-
+  const gw = x1 - x0 || 1, gh = y1 - y0 || 1;
+  const scale = Math.min((w - pad*2) / gw, (h - pad*2) / gh, 2);
+  const tx = (w - scale*gw)/2 - scale*x0;
+  const ty = (h - scale*gh)/2 - scale*y0;
   svg.transition().duration(600).call(
     zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale)
   );
@@ -1270,11 +1291,37 @@ function onNodeClick(event, d) {{
 }}
 
 function onNodeHover(event, d) {{
-  // Show tooltip-style info on the toolbar hint
+  const tip   = document.getElementById('node-tooltip');
+  const box   = document.getElementById('graph-container').getBoundingClientRect();
+  const color = nodeColor(d);
+  const cveCnt  = d.cves ? d.cves.length : 0;
+  const pathCnt = DATA.attack_paths.filter(p => p.path.includes(d.id)).length;
+  const riskCol = d.risk_score >= 8 ? 'var(--accent-red)' : d.risk_score >= 4 ? 'var(--accent-amber)' : 'var(--accent-green)';
+  const flags   = [];
+  if (d.is_source) flags.push('ENTRY POINT');
+  if (d.is_sink)   flags.push('CROWN JEWEL');
+  if (d.id === DATA.critical_node) flags.push('⚠ CRITICAL');
+  tip.innerHTML = `
+    <div class="nt-name">${{d.name}}</div>
+    <div class="nt-badge" style="color:${{color}};border-color:${{color}}">${{d.type.toUpperCase()}}${{flags.length ? ' · '+flags.join(' · ') : ''}}</div>
+    <div class="nt-row"><span class="nt-k">Namespace</span><span class="nt-v">${{d.namespace}}</span></div>
+    <div class="nt-row"><span class="nt-k">Risk Score</span><span class="nt-v" style="color:${{riskCol}}">${{d.risk_score}}</span></div>
+    ${{cveCnt > 0 ? `<div class="nt-row"><span class="nt-k">CVEs</span><span class="nt-v nt-cve">${{cveCnt}} found</span></div>` : ''}}
+    ${{pathCnt > 0 ? `<div class="nt-row"><span class="nt-k">Attack Paths</span><span class="nt-v nt-paths">${{pathCnt}} through here</span></div>` : ''}}
+  `;
+  // Position tooltip: prefer right of cursor, flip left if near right edge
+  let x = event.clientX - box.left + 14;
+  let y = event.clientY - box.top  - 10;
+  if (x + 190 > box.width) x = event.clientX - box.left - 190;
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+  tip.classList.add('visible');
+  // Keep toolbar hint minimal
   document.getElementById('toolbar-hint').textContent =
-    d.type + ': ' + d.name + '  |  ns: ' + d.namespace + '  |  risk: ' + d.risk_score;
+    d.type + ' · ' + d.name + '  |  click to inspect';
 }}
 function onNodeLeave() {{
+  document.getElementById('node-tooltip').classList.remove('visible');
   document.getElementById('toolbar-hint').textContent =
     'Scroll to zoom · Drag to pan · Click node to inspect';
 }}
@@ -1383,7 +1430,7 @@ function renderPathsList() {{
   }}).join('');
 }}
 
-function selectPath(idx) {{
+window.selectPath = function selectPath(idx) {{
   selectedPathIdx = idx;
   // Update card selection
   document.querySelectorAll('.path-card').forEach((c, i) => {{
@@ -1468,6 +1515,14 @@ function renderAnalysis() {{
     <div class="detail-row"><span class="dk">Attack Paths</span><span class="dv" style="color:var(--accent-red)">${{m.attack_path_count}}</span></div>
     <div class="detail-row"><span class="dk">Cycles Detected</span><span class="dv" style="color:var(--accent-orange)">${{m.cycle_count}}</span></div>
     <div class="detail-row"><span class="dk">Baseline Paths</span><span class="dv">${{m.total_paths}}</span></div>
+    <div class="section-label" style="margin-top:14px">Blast Radius Legend</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;line-height:2">
+      <span style="color:#ff3355">●</span> Source (Hop 0) &nbsp;
+      <span style="color:#ffaa00">●</span> Hop 1 &nbsp;
+      <span style="color:#ff6600">●</span> Hop 2 &nbsp;
+      <span style="color:#005f80;background:#00d4ff22;padding:1px 4px;border-radius:2px">●</span> Hop 3<br/>
+      <span style="color:var(--text-muted)">Click "Blast Radius" toolbar button to visualise on graph</span>
+    </div>
   `;
 }}
 
@@ -1480,7 +1535,9 @@ function applyFilter(mode, animate=true) {{
   if (mode === 'all') {{
     nodeG.select('circle.node-circle')
       .transition().duration(dur)
-      .style('opacity', 1).attr('stroke-width', 1.5);
+      .style('opacity', 1).attr('stroke-width', 1.5)
+      .attr('fill', nodeColor)
+      .attr('stroke', d => {{ const c = d3.color(nodeColor(d)); return c ? c.darker(0.6).toString() : '#334455'; }});
     nodeG.select('text').transition().duration(dur).style('opacity', 1);
     linkSel.transition().duration(dur).style('opacity', 0.6).attr('stroke-width', 1.2);
 
@@ -1510,35 +1567,93 @@ function applyFilter(mode, animate=true) {{
 
   }} else if (mode === 'critical') {{
     if (!DATA.critical_node) return;
-    // Show critical node + all its immediate neighbours
     const critEdges = DATA.edges.filter(e => e.source === DATA.critical_node || e.target === DATA.critical_node);
     const ns = new Set([DATA.critical_node, ...critEdges.map(e => e.source), ...critEdges.map(e => e.target)]);
     const es = new Set(critEdges.map(e => e.source + '::' + e.target));
     nodeG.select('circle.node-circle').transition().duration(dur)
       .style('opacity', d => ns.has(d.id) ? 1 : 0.06)
-      .attr('stroke-width', d => d.id === DATA.critical_node ? 3 : 1.5);
+      .attr('stroke-width', d => d.id === DATA.critical_node ? 4 : 1.5)
+      .attr('stroke', d => d.id === DATA.critical_node ? 'var(--accent-purple)' : null);
     nodeG.select('text').transition().duration(dur)
       .style('opacity', d => ns.has(d.id) ? 1 : 0.04);
     linkSel.transition().duration(dur)
       .style('opacity', d => es.has(d._source_id + '::' + d._target_id) ? 0.95 : 0.03)
-      .attr('stroke-width', 1.2);
+      .attr('stroke-width', d => es.has(d._source_id + '::' + d._target_id) ? 2.5 : 1.2);
+    // Draw a "REMOVE THIS" SVG badge above the critical node
+    const critNode = simNodes.find(n => n.id === DATA.critical_node);
+    if (critNode && critNode.x != null) {{
+      overlayG.selectAll('*').remove();
+      const badgeG = overlayG.append('g').attr('transform', `translate(${{critNode.x}},${{critNode.y - 30}})`);
+      badgeG.append('rect')
+        .attr('x', -42).attr('y', -11).attr('width', 84).attr('height', 18)
+        .attr('rx', 3).attr('fill', '#2a0060').attr('stroke', '#b060ff').attr('stroke-width', 1);
+      badgeG.append('text')
+        .attr('text-anchor', 'middle').attr('dy', '0.35em')
+        .attr('fill', '#b060ff')
+        .attr('font-family', 'Share Tech Mono, monospace')
+        .attr('font-size', '8px').attr('letter-spacing', '1px')
+        .text('⚠ REMOVE FIRST');
+      // Draw lines to each immediate neighbour with impact count label
+      const top5ids = new Set(DATA.top5_nodes.map(t => t.id));
+      critEdges.forEach(e => {{
+        const peerId = e.source === DATA.critical_node ? e.target : e.source;
+        const peer   = simNodes.find(n => n.id === peerId);
+        if (!peer || peer.x == null) return;
+        overlayG.append('line')
+          .attr('x1', critNode.x).attr('y1', critNode.y)
+          .attr('x2', peer.x).attr('y2', peer.y)
+          .attr('stroke', top5ids.has(peerId) ? '#b060ff' : '#354a60')
+          .attr('stroke-width', 1).attr('stroke-dasharray', '3 2').attr('opacity', 0.6);
+      }});
+    }}
 
   }} else if (mode === 'blast') {{
-    // Highlight blast radius nodes from all sources in DATA.blast_radius
-    const ns = new Set();
-    Object.values(DATA.blast_radius).forEach(br => {{
-      Object.values(br.by_hop || {{}}).forEach(hopNodes => hopNodes.forEach(n => ns.add(n)));
+    // Build hop-level sets: hop0=sources, hop1,hop2,hop3
+    const hopSets = {{ 0: new Set(), 1: new Set(), 2: new Set(), 3: new Set() }};
+    const hopColors = {{ 0:'#ff3355', 1:'#ffaa00', 2:'#ff6600', 3:'#005f80' }};
+    Object.entries(DATA.blast_radius).forEach(([srcId, br]) => {{
+      hopSets[0].add(srcId);
+      Object.entries(br.by_hop || {{}}).forEach(([hop, nodes]) => {{
+        nodes.forEach(n => hopSets[parseInt(hop)].add(n));
+      }});
     }});
-    // Also add the source nodes themselves
-    Object.keys(DATA.blast_radius).forEach(k => ns.add(k));
+    const allBlast = new Set([...hopSets[0], ...hopSets[1], ...hopSets[2], ...hopSets[3]]);
+
+    // Draw concentric hop rings on the overlay layer
+    overlayG.selectAll('*').remove();
+    simNodes.forEach(nd => {{
+      let hop = -1;
+      for (let h = 0; h <= 3; h++) {{ if (hopSets[h].has(nd.id)) {{ hop = h; break; }} }}
+      if (hop < 0) return;
+      const ringR = (nodeRadius(nd) + 6) + hop * 7;
+      overlayG.append('circle')
+        .attr('cx', nd.x || 0).attr('cy', nd.y || 0)
+        .attr('r', ringR)
+        .attr('fill', 'none')
+        .attr('stroke', hopColors[hop])
+        .attr('stroke-width', hop === 0 ? 2.5 : 1.5)
+        .attr('stroke-dasharray', hop === 0 ? 'none' : '4 3')
+        .attr('opacity', 0.7)
+        .attr('class', 'blast-ring');
+    }});
+
     nodeG.select('circle.node-circle').transition().duration(dur)
-      .style('opacity', d => ns.has(d.id) ? 1 : 0.08)
-      .attr('stroke-width', 1.5);
+      .style('opacity', d => allBlast.has(d.id) ? 1 : 0.06)
+      .attr('fill', d => {{
+        for (let h = 0; h <= 3; h++) {{
+          if (hopSets[h].has(d.id)) return hopColors[h];
+        }}
+        return nodeColor(d);
+      }})
+      .attr('stroke-width', d => hopSets[0].has(d.id) ? 3 : 1.5);
     nodeG.select('text').transition().duration(dur)
-      .style('opacity', d => ns.has(d.id) ? 1 : 0.05);
+      .style('opacity', d => allBlast.has(d.id) ? 1 : 0.04);
     linkSel.transition().duration(dur)
-      .style('opacity', 0.15).attr('stroke-width', 1.2);
+      .style('opacity', 0.12).attr('stroke-width', 1.2);
+
   }}
+  // Always clear overlay rings unless in blast mode
+  if (mode !== 'blast') overlayG.selectAll('*').remove();
 }}
 
 // ── FILTER BUTTONS ────────────────────────────────────────────
@@ -1583,24 +1698,8 @@ document.querySelectorAll('.panel-tab').forEach(tab => {{
 renderPathsList();
 renderAnalysis();
 
-// Auto-fit: poll until the simulation has spread nodes beyond a single point.
-// A fixed setTimeout of 2800ms races the simulation and often fires too early
-// when the browser is slow, leaving all nodes piled at (0,0).
-(function waitAndFit() {{
-  const positioned = simNodes.filter(n => n.x != null && !isNaN(n.x));
-  if (positioned.length === 0) {{ setTimeout(waitAndFit, 200); return; }}
-  const xs = positioned.map(n => n.x);
-  const spread = Math.max(...xs) - Math.min(...xs);
-  if (spread < 20 && simulation.alpha() > 0.01) {{
-    // Nodes not spread yet — wait another tick
-    setTimeout(waitAndFit, 400);
-  }} else {{
-    fitView();
-  }}
-}}());
-
-  }}); // end inner requestAnimationFrame
-}}); // end outer requestAnimationFrame
+// Auto-fit after simulation settles
+setTimeout(fitView, 2800);
 </script>
 </body>
 </html>"""
